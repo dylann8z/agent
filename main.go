@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"host-monitor-agent/api"
+	"host-monitor-agent/cache"
 	"host-monitor-agent/config"
 	"host-monitor-agent/daemon"
 )
@@ -67,8 +68,12 @@ func serve() {
 	// 加载配置
 	cfg := config.DefaultConfig()
 
+	// 创建并启动缓存
+	metricsCache := cache.NewMetricsCache(cfg.Collector.Interval)
+	metricsCache.Start()
+
 	// 设置路由
-	router := api.SetupRouter()
+	router := api.SetupRouter(metricsCache)
 
 	// 配置HTTP服务器
 	addr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
@@ -80,6 +85,7 @@ func serve() {
 	// 启动服务器
 	go func() {
 		log.Printf("Host Monitor Agent starting on %s", addr)
+		log.Printf("Metrics collection interval: %v", cfg.Collector.Interval)
 		log.Printf("Access metrics at: http://%s/metrics", addr)
 		log.Printf("Health check at: http://%s/health", addr)
 
@@ -108,6 +114,9 @@ func serve() {
 		case syscall.SIGINT, syscall.SIGTERM:
 			// 优雅关闭
 			log.Println("Shutting down server...")
+
+			// 停止后台采集
+			metricsCache.Stop()
 
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()

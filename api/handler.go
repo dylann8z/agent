@@ -1,7 +1,7 @@
 package api
 
 import (
-	"host-monitor-agent/collector"
+	"host-monitor-agent/cache"
 	"net/http"
 	"time"
 
@@ -10,28 +10,26 @@ import (
 
 // Handler API处理器
 type Handler struct {
-	metricsCollector *collector.MetricsCollector
+	metricsCache *cache.MetricsCache
 }
 
 // NewHandler 创建API处理器
-func NewHandler() *Handler {
+func NewHandler(metricsCache *cache.MetricsCache) *Handler {
 	return &Handler{
-		metricsCollector: collector.NewMetricsCollector(),
+		metricsCache: metricsCache,
 	}
 }
 
-// GetMetrics 获取监控指标
+// GetMetrics 获取监控指标（从缓存读取）
 func (h *Handler) GetMetrics(c *gin.Context) {
-	metrics, err := h.metricsCollector.CollectAll()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+	metrics := h.metricsCache.Get()
+
+	if metrics == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "metrics not ready",
 		})
 		return
 	}
-
-	// 设置时间戳 (格式: 2025-09-30 07:55:16 UTC)
-	metrics.Timestamp = time.Now().UTC().Format("2006-01-02 15:04:05 MST")
 
 	c.JSON(http.StatusOK, metrics)
 }

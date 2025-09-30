@@ -1,16 +1,18 @@
 package api
 
 import (
+	"host-monitor-agent/cache"
+
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRouter 设置路由
-func SetupRouter() *gin.Engine {
+func SetupRouter(metricsCache *cache.MetricsCache) *gin.Engine {
 	// 设置Gin为发布模式
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.Default()
-	handler := NewHandler()
+	handler := NewHandler(metricsCache)
 
 	// 健康检查
 	router.GET("/health", handler.HealthCheck)
